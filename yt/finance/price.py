@@ -23,19 +23,19 @@ class Binomial(object):
         if 'return_price' in kwargs:
             self.return_price = kwargs['return_price']
 
-    def price_american_put(self, periods, strike_price, market_return, security_volatility, accuracy=0):
+    def price_american_put(self, periods, strike_price, market_return, security_volatility, precision=0):
         """
         Get price of an american put.
 
-        >>> b.price_american_put(4, 100, 1.01, 1.07, accuracy=2)
-        []
+        >>> b.price_american_put(4, 100, 1.01, 1.07, precision=2)
+        [[0, 0, 6.54, 18.37], [0.0, 2.87, 12.66], [1.26, 7.13], [3.82]]
         """
         # first initialize a matrix to house the results
         price_matrix = self._generate_price_matrix(periods, strike_price, security_volatility)
         return_values = []
         # value for the last column starts at (price_matrix_value - strike_price)
         return_values.append(
-            [(self._round(strike_price - x, accuracy) if strike_price - x > 0 else 0) \
+            [(strike_price - x if strike_price - x > 0 else 0) \
                 for x in price_matrix[periods - 1]])
         for i in range(periods - 1):
             return_column = []
@@ -49,12 +49,14 @@ class Binomial(object):
                 excersize_now_price = strike_price - price_matrix[periods - 2 - i][j]
                 if price < excersize_now_price:
                     price = excersize_now_price
-                return_column.append(self._round(price, accuracy))
+                return_column.append(price)
             return_values.append(return_column)
+        if precision > 0:
+            return_values = self._recursive_round(return_values, precision)
         return return_values
         pass
 
-    def price_european_call(self, periods, strike_price, market_return, security_volatility, accuracy=0):
+    def price_european_call(self, periods, strike_price, market_return, security_volatility, precision=0):
         """
         Get price of a european call.
 
@@ -62,10 +64,10 @@ class Binomial(object):
         of various prices, and uses dynamic programming to solve the
         call prices and periods from periods to period zero.
 
-        if accuracy is greater than 0, the result is rounded to accuracy decimals.
+        if precision is greater than 0, the result is rounded to precision decimals.
 
-        >>> b.price_european_call(4, 100, 1.01, 1.07, accuracy=2)
-        [[22.5, 7.0, 0, 0], [15.48, 3.86, 0.0], [10.23, 2.13], [6.58]]
+        >>> b.price_european_call(4, 100, 1.01, 1.07, precision=2)
+        [[22.5, 7.0, 0, 0], [15.48, 3.86, 0.0], [10.23, 2.13], [6.57]]
         """
         # first initialize a matrix to house the results
         price_matrix = self._generate_price_matrix(periods, strike_price, security_volatility)
@@ -73,40 +75,60 @@ class Binomial(object):
         return_values = []
         # value for the last column starts at (price_matrix_value - strike_price)
         return_values.append(
-            [(self._round(x - strike_price, accuracy) if x - strike_price > 0 else 0) \
+            [(x - strike_price if x - strike_price > 0 else 0) \
                 for x in price_matrix[periods - 1]])
         for i in range(periods - 1):
             return_column = []
             for j in range(periods - 1 - i):
-                price = self._round(self._calculate_security_pricing(
+                price = self._calculate_security_pricing(
                             price_matrix[periods - 2 - i][j],
                             market_return,
                             security_volatility,
                             return_values[i][j],
-                            return_values[i][j + 1]), accuracy)
+                            return_values[i][j + 1])
                 return_column.append(price)
             return_values.append(return_column)
+        if precision >= 0:
+            return_values = self._recursive_round(return_values, precision)
         return return_values
 
-    def _round(self, value, accuracy=0):
+    def _round(self, value, precision=0):
         """
-        A self-implemented round method, to ignore rounding, instead of integer accuracy
+        A self-implemented round method, to ignore rounding, instead of integer precision
 
         >>> b._round(1.0903709739)
         1.0903709739
         >>> b._round(1.09709709, 2)
         1.1
         """
-        return round(value, accuracy) if accuracy > 0 else value
+        return round(value, precision) if precision > 0 else value
 
-    def _generate_price_matrix(self, periods, strike_price, security_volatility, accuracy=0):
+    def _recursive_round(self, value, precision):
+        """
+        Recursively round an arbitrary python object, to an precision precision
+
+        >>> b._recursive_round({'a': 1.000808, 'b': 'c'}, 2)
+        {'a': 1.0, 'b': 'c'}
+        >>> b._recursive_round(1.070980, 2)
+        1.07
+        """
+        if type(value) == float:
+            return self._round(value, precision=precision)
+        elif type(value) == list:
+            return [self._recursive_round(v, precision) for v in value]
+        elif type(value) == dict:
+            return dict([(k, self._recursive_round(v, precision)) for k, v in value.items()])
+        else:
+            return value
+
+    def _generate_price_matrix(self, periods, strike_price, security_volatility, precision=0):
         """
         Generate a price matrix of the security in various conditions,
         at each possible outcome.
 
         Outcome is rounded to accurracy digits
 
-        >>> b._generate_price_matrix(4, 100, 1.07, accuracy=2)
+        >>> b._generate_price_matrix(4, 100, 1.07, precision=2)
         [[100.0], [107.0, 93.46], [114.49, 100.0, 87.34], [122.5, 107.0, 93.46, 81.63]]
         """
         return_values = []
@@ -115,10 +137,10 @@ class Binomial(object):
             for j in range(i):
                 price = self._round(
                     self._calculate_price(strike_price, security_volatility, i - j, j),
-                    accuracy=accuracy)
+                    precision=precision)
                 return_column.append(price)
             price = self._round(self._calculate_price(strike_price, security_volatility, 0, i),
-                                accuracy=accuracy)
+                                precision=precision)
             return_column.append(price)
             return_values.append(return_column)
         return return_values
