@@ -23,9 +23,40 @@ class Binomial(object):
         if 'return_price' in kwargs:
             self.return_price = kwargs['return_price']
 
+    def price_american_put(self, periods, strike_price, market_return, security_volatility, accuracy=0):
+        """
+        Get price of an american put.
+
+        >>> b.price_american_put(4, 100, 1.01, 1.07, accuracy=2)
+        []
+        """
+        # first initialize a matrix to house the results
+        price_matrix = self._generate_price_matrix(periods, strike_price, security_volatility)
+        return_values = []
+        # value for the last column starts at (price_matrix_value - strike_price)
+        return_values.append(
+            [(self._round(strike_price - x, accuracy) if strike_price - x > 0 else 0) \
+                for x in price_matrix[periods - 1]])
+        for i in range(periods - 1):
+            return_column = []
+            for j in range(periods - 1 - i):
+                price = self._calculate_security_pricing(
+                            price_matrix[periods - 2 - i][j],
+                            market_return,
+                            security_volatility,
+                            return_values[i][j],
+                            return_values[i][j + 1])
+                excersize_now_price = strike_price - price_matrix[periods - 2 - i][j]
+                if price < excersize_now_price:
+                    price = excersize_now_price
+                return_column.append(self._round(price, accuracy))
+            return_values.append(return_column)
+        return return_values
+        pass
+
     def price_european_call(self, periods, strike_price, market_return, security_volatility, accuracy=0):
         """
-        Get call price of european call.
+        Get price of a european call.
 
         This utilizes the binomial model to calculate the expirations
         of various prices, and uses dynamic programming to solve the
@@ -34,7 +65,7 @@ class Binomial(object):
         if accuracy is greater than 0, the result is rounded to accuracy decimals.
 
         >>> b.price_european_call(4, 100, 1.01, 1.07, accuracy=2)
-        []
+        [[22.5, 7.0, 0, 0], [15.48, 3.86, 0.0], [10.23, 2.13], [6.58]]
         """
         # first initialize a matrix to house the results
         price_matrix = self._generate_price_matrix(periods, strike_price, security_volatility)
@@ -103,9 +134,6 @@ class Binomial(object):
         """
         return strike_price * (security_volatility ** positive_changes) * \
             ((1.0 / security_volatility) ** negative_changes)
-
-    def price_american_call(self):
-        pass
 
     # maybe use this
     def _populate_data(self, arg_dict):
