@@ -1,7 +1,7 @@
 """
-Price.py
+binomial.py
 
-A set of pricing tools for various options
+A set of pricing tools for various options using the binomial model
 """
 __author__ = 'yusuke tsutsumi'
 
@@ -9,23 +9,21 @@ import math
 
 from yt.finance.lib import precision
 
-PERIODS = 1
-
 
 class Binomial(object):
     """
     Price with the binomial model
     """
-    times = 1
-    strike_price = None  # initial price of a stock
+    periods = 1  # number of periods to evaluate with the binomial model
+    initial_price = 0  # inital price of a stock
+    strike_price = None  # price of stock at the end expiration of the option
     periods = 1  # number of periods in the pricing range
     return_price = None  # return on investment
+    security_volatility = 0  # volatility of the security of the one period
+    dividend = 0  # the dividend paid, in proportion of the price
 
     def __init__(self, **kwargs):
-        if 'times' in kwargs:
-            self.times = kwargs['times']
-        if 'return_price' in kwargs:
-            self.return_price = kwargs['return_price']
+        pass
 
     def convert_black_sholes_params(self, periods, maturity, interest_rate,
                                     strike_price, volatility, dividend_yield):
@@ -44,7 +42,8 @@ class Binomial(object):
         return (market_return, gain, dividend)
 
     @precision
-    def price_american_put(self, periods, strike_price, market_return, security_volatility, stock_lattice, dividend=0):
+    def price_american_put(self, periods, strike_price, market_return,
+                           security_volatility, stock_lattice, dividend=0):
         """
         Get price of an american put.
 
@@ -103,7 +102,8 @@ class Binomial(object):
         return return_values
 
     @precision
-    def price_call(self, periods, strike_price, market_return, security_volatility, stock_lattice, dividend=0):
+    def price_call(self, periods, strike_price, market_return,
+                   security_volatility, stock_lattice, dividend=0):
         """
         Get price of a call. As the optimal strategy in a call for
         American and european don't differ, there's no distinction
@@ -161,7 +161,8 @@ class Binomial(object):
         return return_values
 
     @precision
-    def _calculate_price(self, initial_price, security_volatility, positive_changes, negative_changes):
+    def _calculate_price(self, initial_price, security_volatility,
+                         positive_changes, negative_changes):
         """
         Calculate and return the price of an underlying security after
         positive_changes price increases and negative_changes price
@@ -174,7 +175,8 @@ class Binomial(object):
             ((1.0 / security_volatility) ** negative_changes)
 
     @precision
-    def _calculate_security_pricing(self, market_return, security_volatility, gain_price, loss_price, dividend=0):
+    def _calculate_security_pricing(self, market_return, security_volatility,
+                                    gain_price, loss_price, dividend=0):
         """
         This calculates the price of a security at the start of time, with risk-neutral pricing.
 
@@ -223,10 +225,8 @@ class Binomial(object):
         >>> round(b._risk_neutral_probability(1.01, 1.07), 3)
         0.557
 
-        >>> round(b._risk_neutral_probability(1.0003333888950623, 1.0394896104013376, 0.00016670833873502509), 4)
-        0.4925
-
-        TODO ONE MORE TEST FOR DIVIDEND_YIELD
+        >>> round(b._risk_neutral_probability(1.0, 1.039, 0.0001), 4)
+        0.4891
         """
         return (1.0 * market_return - (1 / security_volatility) - dividend) \
             / (security_volatility - (1 / security_volatility))
