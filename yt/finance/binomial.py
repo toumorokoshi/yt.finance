@@ -44,20 +44,20 @@ class Binomial(object):
         return (market_return, gain, dividend)
 
     @precision
-    def price_american_put(self, periods, strike_price, market_return, security_volatility, dividend=0):
+    def price_american_put(self, periods, strike_price, market_return, security_volatility, stock_lattice, dividend=0):
         """
         Get price of an american put.
 
-        >>> b.price_american_put(3, 100, 1.01, 1.07, precision=2)
-        [[0, 0, 6.54, 18.37], [0.0, 2.87, 12.66], [1.26, 7.13], [3.82]]
+        >>> lattice = b.generate_stock_lattice(3, 110, 1.07)
+        >>> b.price_american_put(3, 100, 1.01, 1.07, lattice, precision=2)
+        [[0, 0, 0, 10.21], [0.0, 0.0, 4.48], [0.0, 1.96], [0.86]]
         """
         # first initialize a matrix to house the results
-        price_matrix = self.generate_stock_lattice(periods, strike_price, security_volatility)
         return_values = []
         # value for the last column starts at (price_matrix_value - strike_price)
         return_values.append(
             [(strike_price - x if strike_price - x > 0 else 0) \
-                for x in price_matrix[periods]])
+                for x in stock_lattice[periods]])
         for i in range(periods):
             return_column = []
             for j in range(periods - i):
@@ -67,7 +67,7 @@ class Binomial(object):
                             return_values[i][j],
                             return_values[i][j + 1],
                             dividend=dividend)
-                excersize_now_price = strike_price - price_matrix[periods - 1 - i][j]
+                excersize_now_price = strike_price - stock_lattice[periods - 1 - i][j]
                 if price < excersize_now_price:
                     price = excersize_now_price
                 return_column.append(price)
