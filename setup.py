@@ -6,7 +6,7 @@ except:
     from distutils.core import setup
 
 setup(name='yt.finance',
-      version='0.1',
+      version='0.2',
       description='A very basic finance library',
       author='Yusuke Tsutsumi',
       author_email='yusuke@yusuketsutsumi.com',

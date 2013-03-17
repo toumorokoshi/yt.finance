@@ -236,4 +236,4 @@ if __name__ == '__main__':
     import doctest
     doctest.testmod(extraglobs={
             'b': Binomial()
-    }, verbose=True)
+    })
