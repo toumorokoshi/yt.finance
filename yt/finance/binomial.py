@@ -50,8 +50,7 @@ class Binomial(object):
 
         >>> lattice = b.generate_stock_lattice(3, 110, 1.07)
         >>> b.price_american_put(3, 100, 1.01, 1.07, lattice, precision=2)
-        [[0, 0, 0, 10.21], [0.0, 0.0, 4.48], [0.0, 1.96], [0.86]]
-        [[0, 0, 6.54, 18.37], [0.0, 2.87, 12.66], [1.26, 7.13], [3.82]]
+        [[0.86], [0.0, 1.96], [0.0, 0.0, 4.48], [0, 0, 0, 10.21]]
         """
         # first initialize a matrix to house the results
         return_values = []
@@ -65,14 +64,14 @@ class Binomial(object):
                 price = self._calculate_security_pricing(
                             market_return,
                             security_volatility,
-                            return_values[i][j],
-                            return_values[i][j + 1],
+                            return_values[0][j],
+                            return_values[0][j + 1],
                             dividend=dividend)
                 excersize_now_price = strike_price - stock_lattice[periods - 1 - i][j]
                 if price < excersize_now_price:
                     price = excersize_now_price
                 return_column.append(price)
-            return_values.append(return_column)
+            return_values.insert(0, return_column)
         return return_values
 
     @precision
@@ -81,6 +80,10 @@ class Binomial(object):
         """
         Get price of a european put. Unlike an American put, a holder
         is not able to excersize early.
+
+        >>> lattice = b.generate_stock_lattice(3, 110, 1.07)
+        >>> b.price_european_put(3, 100, 1.01, 1.07, lattice, precision=2)
+        [[0.86], [0.0, 1.96], [0.0, 0.0, 4.48], [0, 0, 0, 10.21]]
         """
         return_values = []
         return_values.append(
@@ -92,17 +95,19 @@ class Binomial(object):
                 price = self._calculate_security_pricing(
                     market_return,
                     security_volatility,
-                    return_values[i][j],
-                    return_values[i][j + 1],
+                    return_values[0][j],
+                    return_values[0][j + 1],
                     dividend=dividend)
                 return_column.append(price)
-            return_values.append(return_column)
+            return_values.insert(0, return_column)
         return return_values
 
     @precision
-    def price_european_call(self, periods, strike_price, market_return, security_volatility, stock_lattice, dividend=0):
+    def price_call(self, periods, strike_price, market_return, security_volatility, stock_lattice, dividend=0):
         """
-        Get price of a european call.
+        Get price of a call. As the optimal strategy in a call for
+        American and european don't differ, there's no distinction
+        with this method.
 
         This utilizes the binomial model to calculate the expirations
         of various prices, and uses dynamic programming to solve the
@@ -111,8 +116,8 @@ class Binomial(object):
         if precision is greater than 0, the result is rounded to precision decimals.
 
         >>> lattice = b.generate_stock_lattice(3, 100, 1.07)
-        >>> b.price_european_call(3, 100, 1.01, 1.07, lattice, precision=2)
-        [[22.5, 7.0, 0, 0], [15.48, 3.86, 0.0], [10.23, 2.13], [6.57]]
+        >>> b.price_call(3, 100, 1.01, 1.07, lattice, precision=2)
+        [[6.57], [10.23, 2.13], [15.48, 3.86, 0.0], [22.5, 7.0, 0, 0]]
         """
         # starting at the end, work backwards to find the proper values of the matrix.
         return_values = []
@@ -126,11 +131,11 @@ class Binomial(object):
                 price = self._calculate_security_pricing(
                             market_return,
                             security_volatility,
-                            return_values[i][j],
-                            return_values[i][j + 1],
+                            return_values[0][j],
+                            return_values[0][j + 1],
                             dividend=dividend)
                 return_column.append(price)
-            return_values.append(return_column)
+            return_values.insert(0, return_column)
         return return_values
 
     @precision
