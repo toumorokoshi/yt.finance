@@ -1,6 +1,7 @@
 """
 lib.py: a set of utility methods for yt.finance
 """
+import functools
 
 __author__ = 'yusuke tsutsumi'
 
@@ -12,7 +13,12 @@ def precision(f):
 
     """
 
-    def precision_f(precision=-1, *args, **kwargs):
+    @functools.wraps(f)
+    def precision_f(*args, **kwargs):
+        precision = -1
+        if 'precision' in kwargs:
+            precision = kwargs['precision']
+            del(kwargs['precision'])
 
         return_value = f(*args, **kwargs)
 

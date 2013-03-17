@@ -43,7 +43,8 @@ class Binomial(object):
         dividend = market_return * (1.0 - (math.e ** - (1.0 * dividend_yield * maturity / periods)))
         return (market_return, gain, dividend)
 
-    def price_american_put(self, periods, strike_price, market_return, security_volatility, dividend=0, precision=0):
+    @precision
+    def price_american_put(self, periods, strike_price, market_return, security_volatility, dividend=0):
         """
         Get price of an american put.
 
@@ -61,7 +62,6 @@ class Binomial(object):
             return_column = []
             for j in range(periods - i):
                 price = self._calculate_security_pricing(
-                            price_matrix[periods - 1 - i][j],
                             market_return,
                             security_volatility,
                             return_values[i][j],
@@ -72,12 +72,11 @@ class Binomial(object):
                     price = excersize_now_price
                 return_column.append(price)
             return_values.append(return_column)
-        if precision > 0:
-            return_values = self._recursive_round(return_values, precision)
         return return_values
         pass
 
-    def price_european_call(self, periods, strike_price, market_return, security_volatility, dividend=0, precision=0):
+    @precision
+    def price_european_call(self, periods, strike_price, market_return, security_volatility, stock_lattice, dividend=0):
         """
         Get price of a european call.
 
@@ -87,22 +86,20 @@ class Binomial(object):
 
         if precision is greater than 0, the result is rounded to precision decimals.
 
-        >>> b.price_european_call(3, 100, 1.01, 1.07, precision=2)
+        >>> lattice = b.generate_stock_lattice(3, 100, 1.07)
+        >>> b.price_european_call(3, 100, 1.01, 1.07, lattice, precision=2)
         [[22.5, 7.0, 0, 0], [15.48, 3.86, 0.0], [10.23, 2.13], [6.57]]
         """
-        # first initialize a matrix to house the results
-        price_matrix = self.generate_stock_lattice(periods, strike_price, security_volatility)
         # starting at the end, work backwards to find the proper values of the matrix.
         return_values = []
         # value for the last column starts at (price_matrix_value - strike_price)
         return_values.append(
             [(x - strike_price if x - strike_price > 0 else 0) \
-                for x in price_matrix[periods]])
+                for x in stock_lattice[periods]])
         for i in range(periods):
             return_column = []
             for j in range(periods - i):
                 price = self._calculate_security_pricing(
-                            price_matrix[periods - 1 - i][j],
                             market_return,
                             security_volatility,
                             return_values[i][j],
@@ -110,11 +107,10 @@ class Binomial(object):
                             dividend=dividend)
                 return_column.append(price)
             return_values.append(return_column)
-        if precision >= 0:
-            return_values = self._recursive_round(return_values, precision)
         return return_values
 
-    def generate_stock_lattice(self, periods, initial_price, security_volatility, precision=0):
+    @precision
+    def generate_stock_lattice(self, periods, initial_price, security_volatility):
         """
         Generate a price matrix of the security in various conditions,
         at each possible outcome.
@@ -128,52 +124,37 @@ class Binomial(object):
         for i in range(periods + 1):
             return_column = []
             for j in range(i):
-                price = self._round(
-                    self._calculate_price(initial_price, security_volatility, i - j, j),
-                    precision=precision)
+                price = self._calculate_price(initial_price, security_volatility, i - j, j)
                 return_column.append(price)
-            price = self._round(self._calculate_price(initial_price, security_volatility, 0, i),
-                                precision=precision)
+            price = self._calculate_price(initial_price, security_volatility, 0, i)
             return_column.append(price)
             return_values.append(return_column)
         return return_values
 
-    def _calculate_price(self, strike_price, security_volatility, positive_changes, negative_changes):
+    @precision
+    def _calculate_price(self, initial_price, security_volatility, positive_changes, negative_changes):
         """
-        Calculate and return the price of strike price after
+        Calculate and return the price of an underlying security after
         positive_changes price increases and negative_changes price
         decreases.
 
         >>> round(b._calculate_price(100, 1.10, 5, 3), 2)
         121.0
         """
-        return strike_price * (security_volatility ** positive_changes) * \
+        return initial_price * (security_volatility ** positive_changes) * \
             ((1.0 / security_volatility) ** negative_changes)
 
-    # maybe use this
-    def _populate_data(self, arg_dict):
-        """
-        Parse a dictionary and return a tuple of values, either
-        populated by the binomial class's default or the value passed.
-        """
-        strike_price = arg_dict['strike_price'] if 'strike_price' in arg_dict else self.strike_price
-        periods = arg_dict['periods'] if 'periods' in arg_dict else self.periods
-        market_return = arg_dict['market_return'] if 'market_return' in arg_dict else self.market_return
-        security_volatility = arg_dict['security_volatility'] if 'security_volatility' in arg_dict \
-            else self.security_volatility
-        return (strike_price, periods)
-
-    def _calculate_security_pricing(self, strike_price, market_return, security_volatility, gain_value, loss_value, dividend=0):
+    @precision
+    def _calculate_security_pricing(self, market_return, security_volatility, gain_price, loss_price, dividend=0):
         """
         This calculates the price of a security at the start of time, with risk-neutral pricing.
 
         We start with these values:
-        * An initial price for the security S0 = strike_price
         * The standard return of the market R = market_return
         * The possible gain proportion u = security_volatility
         * The possible loss proportion d = 1 / security_volatility
-        * The value of the security in the case of a gain Cu = gain_value
-        * The value of the security in the case of a loss Cd = loss_value
+        * The value of the security in the case of a gain Cu = gain_price
+        * The value of the security in the case of a loss Cd = loss_price
 
         And try to find the security price C0
 
@@ -190,15 +171,16 @@ class Binomial(object):
 
         C0 = (1/R)*((R-d)/(u-d)*Cu + (u-R)/(u-d)*Cd)
 
-        >>> round(b._calculate_security_pricing(100, 1.01, 1.07, 5, 0), 2)
+        >>> round(b._calculate_security_pricing(1.01, 1.07, 5, 0), 2)
         2.76
         """
         security_probability = self._risk_neutral_probability(market_return,
                                                               security_volatility,
                                                               dividend=dividend)
-        return (1 / market_return) * ((security_probability * gain_value) +
-                                          ((1 - security_probability) * loss_value))
+        return (1 / market_return) * ((security_probability * gain_price) +
+                                          ((1 - security_probability) * loss_price))
 
+    @precision
     def _risk_neutral_probability(self, market_return, security_volatility, dividend=0):
         """
         Return the probabilities that emerge from a perfectly
@@ -225,4 +207,4 @@ if __name__ == '__main__':
     import doctest
     doctest.testmod(extraglobs={
             'b': Binomial()
-    })
+    }, verbose=True)

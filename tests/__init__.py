@@ -4,6 +4,6 @@ from yt.finance.binomial import Binomial
 
 
 def load_tests(loader, tests, ignore):
-    tests.addTests(doctest.DocTestSuite(yt.finance.binomial,
+    tests.addTests(doctest.DocTestSuite(module=yt.finance.binomial,
                                         extraglobs={'b': Binomial()}))
     return tests
