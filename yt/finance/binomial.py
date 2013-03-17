@@ -51,6 +51,7 @@ class Binomial(object):
         >>> lattice = b.generate_stock_lattice(3, 110, 1.07)
         >>> b.price_american_put(3, 100, 1.01, 1.07, lattice, precision=2)
         [[0, 0, 0, 10.21], [0.0, 0.0, 4.48], [0.0, 1.96], [0.86]]
+        [[0, 0, 6.54, 18.37], [0.0, 2.87, 12.66], [1.26, 7.13], [3.82]]
         """
         # first initialize a matrix to house the results
         return_values = []
@@ -73,7 +74,30 @@ class Binomial(object):
                 return_column.append(price)
             return_values.append(return_column)
         return return_values
-        pass
+
+    @precision
+    def price_european_put(self, periods, strike_price, market_return,
+                           security_volatility, stock_lattice, dividend=0):
+        """
+        Get price of a european put. Unlike an American put, a holder
+        is not able to excersize early.
+        """
+        return_values = []
+        return_values.append(
+            [(strike_price - x if strike_price - x > 0 else 0) \
+                 for x in stock_lattice[periods]])
+        for i in range(periods):
+            return_column = []
+            for j in range(periods - i):
+                price = self._calculate_security_pricing(
+                    market_return,
+                    security_volatility,
+                    return_values[i][j],
+                    return_values[i][j + 1],
+                    dividend=dividend)
+                return_column.append(price)
+            return_values.append(return_column)
+        return return_values
 
     @precision
     def price_european_call(self, periods, strike_price, market_return, security_volatility, stock_lattice, dividend=0):
