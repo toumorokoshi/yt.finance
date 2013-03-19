@@ -12,7 +12,7 @@ setup(name='yt.finance',
       author_email='yusuke@yusuketsutsumi.com',
       url='https://github.com/toumorokoshi/yt.finance',
       packages=['yt', 'yt.finance'],
-      requires=['numpy==1.7.0'],
+      requires=['numpy(>=1.7.0)'],
       classifiers=[
         'Development Status :: 4 - Beta',
         'Operating System :: MacOS',
