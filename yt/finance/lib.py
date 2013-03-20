@@ -2,6 +2,7 @@
 lib.py: a set of utility methods for yt.finance
 """
 import functools
+from numpy import float64
 
 __author__ = 'yusuke tsutsumi'
 
@@ -38,7 +39,7 @@ def recursive_round(value, precision):
     >>> recursive_round(1.070980, 2)
     1.07
     """
-    if type(value) == float:
+    if type(value) in [float, float64]:
         return round(value, precision)
     elif type(value) == list:
         return [recursive_round(v, precision) for v in value]
