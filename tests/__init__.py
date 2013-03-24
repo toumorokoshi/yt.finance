@@ -12,6 +12,7 @@ covariance = [
     [-2.0, -2.0, 2.0],
     [4.0, -2.0, 8.0]
 ]
+risk_free_return = 0.01
 
 
 def load_tests(loader, tests, ignore):
@@ -19,5 +20,5 @@ def load_tests(loader, tests, ignore):
                                         extraglobs={'b': Binomial()}))
     tests.addTests(doctest.DocTestSuite(module=yt.finance.interest))
     tests.addTests(doctest.DocTestSuite(module=yt.finance.portfolio,
-                                        extraglobs={'p': Portfolio(assets, distributions, covariance)}))
+                                        extraglobs={'p': Portfolio(assets, distributions, covariance, risk_free_return)}))
     return tests
