@@ -47,3 +47,55 @@ def recursive_round(value, precision):
         return dict([(k, recursive_round(v, precision)) for k, v in value.items()])
     else:
         return value
+
+
+def __calculate_lattice_value(initial_value, variance_up, variance_down,
+                              positive_changes, negative_changes):
+    return initial_value * (variance_up ** positive_changes) * \
+        ((1.0 * variance_down) ** negative_changes)
+
+
+@precision
+def generate_lattice(periods, initial_value, variance_up, variance_down):
+    """
+    Generate a lattice
+    """
+    return_values = []
+    for i in range(periods + 1):
+        return_column = []
+        for j in range(i):
+            value = __calculate_lattice_value(initial_value,
+                                              variance_up, variance_down,
+                                              i - j, j)
+            return_column.append(value)
+        value = __calculate_lattice_value(initial_value,
+                                          variance_up, variance_down,
+                                          0, i)
+        return_column.append(value)
+        return_values.append(return_column)
+    return return_values
+
+
+def price_lattice(periods, lattice, initial_values, method):
+    """
+    Generate a price lattice with
+    * p periods
+    * a underlying security lattice l
+    * initial_values
+    * and a method m which takes:
+      * the underlying security lattice
+      * the return_lattice
+    """
+    return_lattice = initial_values
+    for i in range(periods):
+        lattice_column = periods - i - 1
+        column = []
+        for j in range(lattice_column + 1):
+            value = method(lattice=lattice,
+                           return_lattice=return_lattice,
+                           col=lattice_column,
+                           row=j)
+            column.append(value)
+        return_lattice.insert(0, column)
+    column.append(value)
+    return return_lattice

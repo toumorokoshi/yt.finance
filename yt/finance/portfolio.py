@@ -87,5 +87,4 @@ class Portfolio(object):
         distributions_matrix = matrix(sharp_optimal_portfolio)
         distributions_matrix = distributions_matrix * self.covariance * distributions_matrix.transpose()
         volatility = np.sqrt(distributions_matrix.sum())
-        import pdb; pdb.set_trace()
         return mean_excess_return / volatility
